@@ -486,7 +486,7 @@ class CausalLM(Model):
         dtype: Optional[torch.dtype] = None,
     ):
         device = torch.device("hpu")
-        self.setup_env()
+        # self.setup_env()
 
         dtype = torch.bfloat16 if dtype is None else dtype
 
@@ -552,9 +552,9 @@ class CausalLM(Model):
                 ds_inference_kwargs["checkpoint"] = checkpoints_json.name
             model = deepspeed.init_inference(model, **ds_inference_kwargs)
             model = model.module
-            if model.config.model_type == "llama":
-                self.patch_scoped_linear_all_reduce(model)
-            model = self.prepare_model_for_quantization(model)
+            # if model.config.model_type == "llama":
+            #     self.patch_scoped_linear_all_reduce(model)
+            # model = self.prepare_model_for_quantization(model)
             model = remove_kv_cache_from_output(model)
             if self.enable_hpu_graph:
                 model = wrap_in_hpu_graph(model, disable_tensor_cache=True)
@@ -566,13 +566,13 @@ class CausalLM(Model):
                 revision=revision,
                 torch_dtype=dtype,
             )
-            model = self.prepare_model_for_quantization(model)
+            # model = self.prepare_model_for_quantization(model)
             model = model.eval().to(device)
             # wrap in hpu_graph only if self.enable_hpu_graph is set
             model = remove_kv_cache_from_output(model)
             if self.enable_hpu_graph:
                 model = wrap_in_hpu_graph(model, disable_tensor_cache=True)
-        model = self.setup_quantization(model)
+        # model = self.setup_quantization(model)
 
         if model.config.model_type in MODELS_OPTIMIZED_WITH_STATIC_SHAPES:
             self.is_optimized_for_gaudi = True
