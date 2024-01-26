@@ -552,9 +552,7 @@ class CausalLM(Model):
                 ds_inference_kwargs["checkpoint"] = checkpoints_json.name
             model = deepspeed.init_inference(model, **ds_inference_kwargs)
             model = model.module
-            # if model.config.model_type == "llama":
-            #     self.patch_scoped_linear_all_reduce(model)
-            # model = self.prepare_model_for_quantization(model)
+            model = self.patch_scoped_linear_all_reduce(model)
             model = remove_kv_cache_from_output(model)
             if self.enable_hpu_graph:
                 model = wrap_in_hpu_graph(model, disable_tensor_cache=True)
@@ -566,12 +564,13 @@ class CausalLM(Model):
                 revision=revision,
                 torch_dtype=dtype,
             )
-            # model = self.prepare_model_for_quantization(model)
             model = model.eval().to(device)
             # wrap in hpu_graph only if self.enable_hpu_graph is set
             model = remove_kv_cache_from_output(model)
             if self.enable_hpu_graph:
                 model = wrap_in_hpu_graph(model, disable_tensor_cache=True)
+
+        model = self.prepare_model_for_quantization(model)
         model = self.setup_quantization(model)
 
         if model.config.model_type in MODELS_OPTIMIZED_WITH_STATIC_SHAPES:
@@ -636,16 +635,16 @@ class CausalLM(Model):
             os.environ.setdefault(
                 "UPDATE_MME_OUTPUT_PRECISION_FILTER", "v_proj,matmul_av")
             os.environ.setdefault("EXPERIMENTAL_WEIGHT_SHARING", "FALSE")
+            
             import habana_frameworks.torch.core as htcore
             htcore.hpu_set_env()
+            htcore.hpu_initialize()
 
     def setup_quantization(self, model):
         if self.is_quantization_enabled:
-            import habana_frameworks.torch.core as htcore
             from habana_frameworks.torch.core.quantization import _check_params_as_const, _mark_params_as_const
             _mark_params_as_const(model)
             _check_params_as_const(model)
-            htcore.hpu_initialize(model)
         return model
 
     def prepare_model_for_quantization(self, model):
@@ -668,6 +667,7 @@ class CausalLM(Model):
                 SL = ScopedLinearAllReduce(mod=module)
                 setattr(model, name, SL)
             self.patch_scoped_linear_all_reduce(module)
+        return model
 
     @property
     def batch_type(self) -> Type[CausalLMBatch]:
