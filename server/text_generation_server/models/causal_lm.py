@@ -486,7 +486,7 @@ class CausalLM(Model):
         dtype: Optional[torch.dtype] = None,
     ):
         device = torch.device("hpu")
-        # self.setup_env()
+        self.setup_env()
 
         dtype = torch.bfloat16 if dtype is None else dtype
 
