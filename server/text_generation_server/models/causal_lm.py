@@ -572,7 +572,7 @@ class CausalLM(Model):
             model = remove_kv_cache_from_output(model)
             if self.enable_hpu_graph:
                 model = wrap_in_hpu_graph(model, disable_tensor_cache=True)
-        # model = self.setup_quantization(model)
+        model = self.setup_quantization(model)
 
         if model.config.model_type in MODELS_OPTIMIZED_WITH_STATIC_SHAPES:
             self.is_optimized_for_gaudi = True
